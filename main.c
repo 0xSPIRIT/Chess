@@ -249,16 +249,16 @@ int main() {
     SDL_Surface *surf, *go1, *go2;
     SDL_Texture *texture, *gow, *gob;
     
-	SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO);
     IMG_Init(IMG_INIT_PNG);
     
-	window = SDL_CreateWindow("Chess",
+    window = SDL_CreateWindow("Chess",
                               SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED,
                               screen_width,
                               screen_height,
                               SDL_WINDOW_RESIZABLE);
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     
     surf = IMG_Load("pieces.png");
     texture = SDL_CreateTextureFromSurface(renderer, surf);
@@ -273,8 +273,8 @@ int main() {
     SDL_FreeSurface(go1);
     SDL_FreeSurface(go2);
 
-	while (running) {
-		SDL_Event event;
+    while (running) {
+        SDL_Event event;
         SDL_Rect r = {
             0,
             0,
@@ -284,8 +284,8 @@ int main() {
 
         int x, y, c;
         
-		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_QUIT) running = false;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) running = false;
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) running = false;
             
             if (event.type == SDL_MOUSEBUTTONDOWN && !is_game_over) {
@@ -333,10 +333,10 @@ int main() {
                     selected_y = -1;
                 }
             }
-		}
+        }
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-		SDL_RenderClear(renderer);
+        SDL_RenderClear(renderer);
 
         c = is_in_check(-1,-1,-1,-1);
         
@@ -374,17 +374,17 @@ int main() {
             SDL_RenderCopy(renderer, gob, NULL, NULL);
         }
         
-		SDL_RenderPresent(renderer);
-	}
+        SDL_RenderPresent(renderer);
+    }
 
     SDL_DestroyTexture(texture);
     SDL_DestroyTexture(gow);
     SDL_DestroyTexture(gob);
     
-	SDL_DestroyWindow(window);
-	SDL_DestroyRenderer(renderer);
-	
-	SDL_Quit();
+    SDL_DestroyWindow(window);
+    SDL_DestroyRenderer(renderer);
+    
+    SDL_Quit();
 
     return 0;
 }
