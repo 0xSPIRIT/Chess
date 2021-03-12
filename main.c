@@ -12,8 +12,8 @@
 #define BOARD_W 8
 #define BOARD_H 8
 
-const int screen_width = CELL_SIZE * BOARD_W;
-const int screen_height = CELL_SIZE * BOARD_H;
+int screen_width = CELL_SIZE * BOARD_W;
+int screen_height = CELL_SIZE * BOARD_H;
 
 enum {
     PIECE_EMPTY = 0,
@@ -40,6 +40,18 @@ Piece pieces[BOARD_W][BOARD_H] = {
     { {PIECE_PAWN, 1}, {PIECE_PAWN, 1}, {PIECE_PAWN, 1}, {PIECE_PAWN, 1}, {PIECE_PAWN, 1}, {PIECE_PAWN, 1}, {PIECE_PAWN, 1}, {PIECE_PAWN, 1} },
     { {PIECE_ROOK, 1}, {PIECE_KNIGHT, 1}, {PIECE_BISHOP, 1}, {PIECE_QUEEN, 1}, {PIECE_KING, 1}, {PIECE_BISHOP, 1}, {PIECE_KNIGHT, 1}, {PIECE_ROOK, 1} },
 };
+
+/* Test board: */
+/* Piece pieces[BOARD_H][BOARD_W] = { */
+/*     { {PIECE_ROOK, 0}, {PIECE_QUEEN, 0}, {PIECE_KING, 0}, {PIECE_ROOK, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {PIECE_ROOK, 1}, {PIECE_QUEEN, 1}, {PIECE_KING, 1}, {PIECE_ROOK, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}} */
+/* }; */
 
 int selected_x = -1, selected_y = -1;
 
@@ -157,22 +169,20 @@ bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
     return is_valid;
 }
 
-int is_in_check(int wkx, int wky, int bkx, int bky) {
-    int white_king_x = wkx, white_king_y = wky;
-    int black_king_x = bkx, black_king_y = bky;
+int is_in_check() {
+    int white_king_x, white_king_y;
+    int black_king_x, black_king_y;
     int x, y;
 
-    if (wkx == -1) {
-        for (y = 0; y < BOARD_H; ++y) {
-            for (x = 0; x < BOARD_W; ++x) {
-                if (pieces[y][x].type == PIECE_KING) {
-                    if (pieces[y][x].is_white) {
-                        white_king_x = x;
-                        white_king_y = y;
-                    } else {
-                        black_king_x = x;
-                        black_king_y = y;
-                    }
+    for (y = 0; y < BOARD_H; ++y) {
+        for (x = 0; x < BOARD_W; ++x) {
+            if (pieces[y][x].type == PIECE_KING) {
+                if (pieces[y][x].is_white) {
+                    white_king_x = x;
+                    white_king_y = y;
+                } else {
+                    black_king_x = x;
+                    black_king_y = y;
                 }
             }
         }
@@ -213,20 +223,22 @@ bool is_in_checkmate(int who) {
             }
         }
     }
-    
+
     for (y = 0; y < BOARD_H; ++y) {
         for (x = 0; x < BOARD_W; ++x) {
             if (who == 1 && !pieces[y][x].is_white) continue;
             if (who == 2 && pieces[y][x].is_white) continue;
-            for (j = 0; j < BOARD_H; ++j) {
-                for (i = 0; i < BOARD_W; ++i) {
+
+            for (i = 0; i < BOARD_W; ++i) {
+                for (j = 0; j < BOARD_H; ++j) {
                     if (is_move_valid(x, y, i, j)) {
                         Piece p[BOARD_H][BOARD_W];
                         memcpy(p, pieces, sizeof(Piece) * BOARD_W * BOARD_H);
-                        
+
                         move_piece(x, y, i, j);
                         
-                        if (0==is_in_check(white_king_x, white_king_y, black_king_x, black_king_y)) {
+                        if (!is_in_check(white_king_x, white_king_y, black_king_x, black_king_y)) {
+                            printf("Not checkmate because of: %d, %d to %d, %d\n", x, y, i, j); fflush(stdout);
                             memcpy(pieces, p, sizeof(Piece) * BOARD_W * BOARD_H);
                             return false;
                         }
@@ -257,7 +269,7 @@ int main() {
                               SDL_WINDOWPOS_UNDEFINED,
                               screen_width,
                               screen_height,
-                              SDL_WINDOW_RESIZABLE);
+                              0);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     
     surf = IMG_Load("pieces.png");
