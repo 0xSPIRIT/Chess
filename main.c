@@ -44,12 +44,12 @@ Piece pieces[BOARD_W][BOARD_H] = {
 /* Test board: */
 /* Piece pieces[BOARD_H][BOARD_W] = { */
 /*     { {PIECE_ROOK, 0}, {PIECE_QUEEN, 0}, {PIECE_KING, 0}, {PIECE_ROOK, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}}, */
+/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {PIECE_PAWN,0} }, */
 /*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
 /*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
 /*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
 /*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
-/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
-/*     { {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
+/*     { {PIECE_PAWN, 1}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0}, {0,0} }, */
 /*     { {PIECE_ROOK, 1}, {PIECE_QUEEN, 1}, {PIECE_KING, 1}, {PIECE_ROOK, 1}, {0, 0}, {0, 0}, {0, 0}, {0, 0}} */
 /* }; */
 
@@ -81,6 +81,16 @@ void move_piece(int from_x, int from_y, int to_x, int to_y) {
     pieces[from_y][from_x].type = 0;
 }
 
+bool can_promote(int px, int py) {
+    if (pieces[py][px].type != PIECE_PAWN) return false;
+
+    if (pieces[py][px].is_white && py == 0) return true;
+    if (!pieces[py][px].is_white && py == BOARD_H-1) return true;
+
+    return false;
+}
+
+/* Note: this doesn't check if castling is a valid move. That's handled in another function. */
 bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
     Piece p;
     bool is_valid = false;
@@ -94,10 +104,10 @@ bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
     if (pieces[to_y][to_x].type != PIECE_EMPTY && pieces[to_y][to_x].is_white == p.is_white) return false;
 
     switch (p.type) {
-    case PIECE_KING: /* TODO: Castle */
+    case PIECE_KING:
         is_valid = abs(to_x - from_x) <= 1 && abs(to_y - from_y) <= 1;
         break;
-    case PIECE_PAWN: /* TODO: En passant */
+    case PIECE_PAWN:
         if (p.is_white) {
             if (to_x == from_x && to_y == from_y-1 && pieces[to_y][to_x].type == PIECE_EMPTY) is_valid = true;
             if (from_y == 6 && to_x == from_x && to_y == from_y-2 && pieces[to_y][to_x].type == PIECE_EMPTY && pieces[to_y+1][to_x].type == PIECE_EMPTY) is_valid = true;
@@ -169,7 +179,7 @@ bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
     return is_valid;
 }
 
-int is_in_check() {
+int is_in_check(void) {
     int white_king_x, white_king_y;
     int black_king_x, black_king_y;
     int x, y;
@@ -203,26 +213,56 @@ int is_in_check() {
     return 0;
 }
 
-bool is_in_checkmate(int who) {
-    int x, y;
-    int i, j;
+void attempt_castle(int from_x, int from_y, int to_x, int to_y) {
+    bool white = pieces[from_y][from_x].is_white;
+    
+    if (pieces[from_y][from_x].type != PIECE_KING) return;
+    if (white ? is_in_check() == 1 : is_in_check() == 2) return;
 
-    int white_king_x, white_king_y;
-    int black_king_x, black_king_y;
+    if (to_x - from_x > 0) {
+        /* King's side castle */
+        if (from_x == 4 && (white ? from_y == 7 : from_y == 0) && to_x == from_x+2 && to_y == from_y) {
+            if (pieces[from_y][to_x+1].type != PIECE_ROOK) return;
 
-    for (y = 0; y < BOARD_H; ++y) {
-        for (x = 0; x < BOARD_W; ++x) {
-            if (pieces[y][x].type == PIECE_KING) {
-                if (pieces[y][x].is_white) {
-                    white_king_x = x;
-                    white_king_y = y;
-                } else {
-                    black_king_x = x;
-                    black_king_y = y;
+            if (pieces[from_y][from_x+1].type == PIECE_EMPTY && pieces[from_y][from_x+2].type == PIECE_EMPTY) {
+                Piece p[BOARD_H][BOARD_W];
+                memcpy(p, pieces, sizeof(Piece) * 8 * 8);
+                
+                move_piece(from_x, from_y, to_x, to_y); /* King */
+                move_piece(to_x+1, from_y, to_x-1, to_y); /* Rook */
+
+                is_white_turn = !is_white_turn;
+
+                if ((white ? is_in_check() == 1 : is_in_check() == 2)) {
+                    memcpy(pieces, p, sizeof(Piece) * 8 * 8);
+                }
+            }
+        }
+    } else {
+        /* Queen's side castle */
+        if (from_x == 4 && (white ? from_y == 7 : from_y == 0) && to_x == from_x-2 && to_y == from_y) {
+            if (pieces[to_y][to_x-2].type != PIECE_ROOK) return;
+
+            if (pieces[from_y][from_x-1].type == PIECE_EMPTY && pieces[from_y][from_x-2].type == PIECE_EMPTY) {
+                Piece p[BOARD_H][BOARD_W];
+                memcpy(p, pieces, sizeof(Piece) * 8 * 8);
+                
+                move_piece(from_x, from_y, to_x, to_y); /* King */
+                move_piece(to_x-2, from_y, to_x+1, to_y); /* Rook */
+
+                is_white_turn = !is_white_turn;
+
+                if ((white ? is_in_check() == 1 : is_in_check() == 2)) {
+                    memcpy(pieces, p, sizeof(Piece) * 8 * 8);
                 }
             }
         }
     }
+}
+
+bool is_in_checkmate(int who) {
+    int x, y;
+    int i, j;
 
     for (y = 0; y < BOARD_H; ++y) {
         for (x = 0; x < BOARD_W; ++x) {
@@ -237,7 +277,7 @@ bool is_in_checkmate(int who) {
 
                         move_piece(x, y, i, j);
                         
-                        if (!is_in_check(white_king_x, white_king_y, black_king_x, black_king_y)) {
+                        if (!is_in_check()) {
                             printf("Not checkmate because of: %d, %d to %d, %d\n", x, y, i, j); fflush(stdout);
                             memcpy(pieces, p, sizeof(Piece) * BOARD_W * BOARD_H);
                             return false;
@@ -304,8 +344,11 @@ int main() {
                 int px = event.button.x / CELL_SIZE;
                 int py = event.button.y / CELL_SIZE;
 
-                int was_in_check = is_in_check(-1, -1, -1, -1);
+                int was_in_check = is_in_check();
                 
+                /* if (!is_white_turn) { */
+                /*     py = (BOARD_H - 1) - py; */
+                /* } */
                 if (selected_x == -1) {
                     if (pieces[py][px].type == PIECE_EMPTY || pieces[py][px].is_white != is_white_turn) break;
                 
@@ -318,19 +361,19 @@ int main() {
                         move_piece(selected_x, selected_y, px, py);
                         if ((was_in_check == 1 && is_white_turn) ||
                             (was_in_check == 2 && !is_white_turn)) {
-                            if ((was_in_check == 1 && is_in_check(-1,-1,-1,-1) == 1) ||
-                                (was_in_check == 2 && is_in_check(-1,-1,-1,-1) == 2)) {
+                            if ((was_in_check == 1 && is_in_check() == 1) ||
+                                (was_in_check == 2 && is_in_check() == 2)) {
                                 /* Illegal move. */
                                 memcpy(pieces, tmp, sizeof(Piece) * BOARD_W * BOARD_H);
                             } else {
                                 is_white_turn = !is_white_turn;
                             }
                         } else {
-                            if ((!was_in_check && ((is_white_turn && 1 == is_in_check(-1,-1,-1,-1)) || (!is_white_turn && 2 == is_in_check(-1,-1,-1,-1))))) {
+                            if ((!was_in_check && ((is_white_turn && 1 == is_in_check()) || (!is_white_turn && 2 == is_in_check())))) {
                                 /* Illegal move. */
                                 memcpy(pieces, tmp, sizeof(Piece) * BOARD_W * BOARD_H);
                             } else {
-                                int c = is_in_check(-1,-1,-1,-1);
+                                int c = is_in_check();
                                 is_white_turn = !is_white_turn;
                                 if ((c == 1 && is_white_turn) || (c == 2 && !is_white_turn)) {
                                     bool is = is_in_checkmate(c);
@@ -340,7 +383,13 @@ int main() {
                                 }
                             }
                         }
+                        if (can_promote(px, py)) {
+                            pieces[py][px].type = PIECE_QUEEN;
+                        }
                     }
+
+                    attempt_castle(selected_x, selected_y, px, py);
+                    
                     selected_x = -1;
                     selected_y = -1;
                 }
@@ -350,12 +399,19 @@ int main() {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        c = is_in_check(-1,-1,-1,-1);
+        c = is_in_check();
         
         for (y = 0; y < BOARD_H; ++y) {
             for (x = 0; x < BOARD_W; ++x) {
+                /* int ty = y; */
+                /* if (!is_white_turn) { */
+                /*     y = (BOARD_H-1) - y; */
+                /*     fflush(stdout); */
+                /* } */
+                
                 r.x = x * CELL_SIZE;
                 r.y = y * CELL_SIZE;
+                /* y = ty; */
 
                 if ((x+y) % 2 == 1) {
                     SDL_SetRenderDrawColor(renderer, 255, 216, 158, 255);
