@@ -274,21 +274,14 @@ void attempt_en_passant(int from_x, int from_y, int to_x, int to_y) {
     Piece p = pieces[from_y][to_x];
     bool white = pieces[from_y][from_x].is_white;
 
-    puts("a"); fflush(stdout);
-    
     if (white) {
         if (from_y != 3) return;
     } else {
         if (from_y != 4) return;
     }
-
-    puts("b"); fflush(stdout);
         
     if (abs(from_x - to_x) != 1) return;
     if (abs(from_y - to_y) != 1) return;
-
-    puts("c"); 
-    puts(""); fflush(stdout);
     
     if (p.type != PIECE_PAWN || p.is_white == pieces[from_y][from_x].is_white) return;
 
@@ -385,7 +378,7 @@ int main() {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) running = false;
-            
+
             if (event.type == SDL_MOUSEBUTTONDOWN && !is_game_over) {
                 int px = event.button.x / CELL_SIZE;
                 int py = event.button.y / CELL_SIZE;
@@ -401,8 +394,6 @@ int main() {
                     selected_x = px;
                     selected_y = py;
                 } else {
-                    printf("%d, %d\n", pawn_that_moved_two_squares_x, pawn_that_moved_two_squares_y); fflush(stdout);
-                    
                     if (is_move_valid(selected_x, selected_y, px, py)) {
                         Piece tmp[BOARD_W][BOARD_H];
                         memcpy(tmp, pieces, sizeof(Piece) * BOARD_W * BOARD_H);
@@ -454,55 +445,55 @@ int main() {
                     selected_y = -1;
                 }
             }
-        }
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
 
-        c = is_in_check();
+            c = is_in_check();
         
-        for (y = 0; y < BOARD_H; ++y) {
-            for (x = 0; x < BOARD_W; ++x) {
-                /* int ty = y; */
-                /* if (!is_white_turn) { */
-                /*     y = (BOARD_H-1) - y; */
-                /*     fflush(stdout); */
-                /* } */
+            for (y = 0; y < BOARD_H; ++y) {
+                for (x = 0; x < BOARD_W; ++x) {
+                    /* int ty = y; */
+                    /* if (!is_white_turn) { */
+                    /*     y = (BOARD_H-1) - y; */
+                    /*     fflush(stdout); */
+                    /* } */
                 
-                r.x = x * CELL_SIZE;
-                r.y = y * CELL_SIZE;
-                /* y = ty; */
+                    r.x = x * CELL_SIZE;
+                    r.y = y * CELL_SIZE;
+                    /* y = ty; */
 
-                if ((x+y) % 2 == 1) {
-                    SDL_SetRenderDrawColor(renderer, 255, 216, 158, 255);
-                } else {
-                    SDL_SetRenderDrawColor(renderer, 219, 139, 71, 1);
-                }
+                    if ((x+y) % 2 == 1) {
+                        SDL_SetRenderDrawColor(renderer, 255, 216, 158, 255);
+                    } else {
+                        SDL_SetRenderDrawColor(renderer, 219, 139, 71, 1);
+                    }
 
-                if (pieces[y][x].type == PIECE_KING && ((c == 1 && pieces[y][x].is_white) || (c == 2 && !pieces[y][x].is_white))) {
-                    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                }
+                    if (pieces[y][x].type == PIECE_KING && ((c == 1 && pieces[y][x].is_white) || (c == 2 && !pieces[y][x].is_white))) {
+                        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                    }
                 
-                if (selected_x == x && selected_y == y) {
-                    SDL_SetRenderDrawColor(renderer, 216, 255, 90, 255);
-                }
+                    if (selected_x == x && selected_y == y) {
+                        SDL_SetRenderDrawColor(renderer, 216, 255, 90, 255);
+                    }
 
-                SDL_RenderFillRect(renderer, &r);
+                    SDL_RenderFillRect(renderer, &r);
 
-                if (pieces[y][x].type != PIECE_EMPTY) {
-                    SDL_Rect src = spritesheet_get_piece_rect(pieces[y][x]);
-                    SDL_RenderCopy(renderer, texture, &src, &r);
+                    if (pieces[y][x].type != PIECE_EMPTY) {
+                        SDL_Rect src = spritesheet_get_piece_rect(pieces[y][x]);
+                        SDL_RenderCopy(renderer, texture, &src, &r);
+                    }
                 }
             }
-        }
 
-        if (is_game_over == 1) {
-            SDL_RenderCopy(renderer, gow, NULL, NULL);
-        } else if (is_game_over == 2) {
-            SDL_RenderCopy(renderer, gob, NULL, NULL);
-        }
+            if (is_game_over == 1) {
+                SDL_RenderCopy(renderer, gow, NULL, NULL);
+            } else if (is_game_over == 2) {
+                SDL_RenderCopy(renderer, gob, NULL, NULL);
+            }
         
-        SDL_RenderPresent(renderer);
+            SDL_RenderPresent(renderer);
+        }
     }
 
     SDL_DestroyTexture(texture);
