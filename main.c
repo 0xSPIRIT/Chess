@@ -30,6 +30,10 @@ typedef struct {
     bool is_white;
 } Piece;
 
+int pawn_that_moved_two_squares_x = -1;
+int pawn_that_moved_two_squares_y = -1;
+bool did_move_pawn = false;
+
 Piece pieces[BOARD_W][BOARD_H] = {
     { {PIECE_ROOK, 0}, {PIECE_KNIGHT, 0}, {PIECE_BISHOP, 0}, {PIECE_QUEEN, 0}, {PIECE_KING, 0}, {PIECE_BISHOP, 0}, {PIECE_KNIGHT, 0}, {PIECE_ROOK, 0} },
     { {PIECE_PAWN, 0}, {PIECE_PAWN, 0}, {PIECE_PAWN, 0}, {PIECE_PAWN, 0}, {PIECE_PAWN, 0}, {PIECE_PAWN, 0}, {PIECE_PAWN, 0}, {PIECE_PAWN, 0} },
@@ -110,12 +114,18 @@ bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
     case PIECE_PAWN:
         if (p.is_white) {
             if (to_x == from_x && to_y == from_y-1 && pieces[to_y][to_x].type == PIECE_EMPTY) is_valid = true;
-            if (from_y == 6 && to_x == from_x && to_y == from_y-2 && pieces[to_y][to_x].type == PIECE_EMPTY && pieces[to_y+1][to_x].type == PIECE_EMPTY) is_valid = true;
+            if (from_y == 6 && to_x == from_x && to_y == from_y-2 && pieces[to_y][to_x].type == PIECE_EMPTY && pieces[to_y+1][to_x].type == PIECE_EMPTY) {
+                did_move_pawn = true;
+                is_valid = true;
+            }
             if (to_x == from_x-1 && to_y == from_y-1 && pieces[to_y][to_x].type != PIECE_EMPTY) is_valid = true;
             if (to_x == from_x+1 && to_y == from_y-1 && pieces[to_y][to_x].type != PIECE_EMPTY) is_valid = true;
         } else {
             if (to_x == from_x && to_y == from_y+1 && pieces[to_y][to_x].type == PIECE_EMPTY) is_valid = true;
-            if (from_y == 1 && to_x == from_x && to_y == from_y+2 && pieces[to_y][to_x].type == PIECE_EMPTY && pieces[to_y-1][to_x].type == PIECE_EMPTY) is_valid = true;
+            if (from_y == 1 && to_x == from_x && to_y == from_y+2 && pieces[to_y][to_x].type == PIECE_EMPTY && pieces[to_y-1][to_x].type == PIECE_EMPTY) {
+                did_move_pawn = true;
+                is_valid = true;
+            }
             if (to_x == from_x-1 && to_y == from_y+1 && pieces[to_y][to_x].type != PIECE_EMPTY) is_valid = true;
             if (to_x == from_x+1 && to_y == from_y+1 && pieces[to_y][to_x].type != PIECE_EMPTY) is_valid = true;
         }
@@ -222,7 +232,7 @@ void attempt_castle(int from_x, int from_y, int to_x, int to_y) {
     if (to_x - from_x > 0) {
         /* King's side castle */
         if (from_x == 4 && (white ? from_y == 7 : from_y == 0) && to_x == from_x+2 && to_y == from_y) {
-            if (pieces[from_y][to_x+1].type != PIECE_ROOK) return;
+            if (pieces[from_y][to_x+1].type != PIECE_ROOK || pieces[from_y][to_x+1].is_white != white) return;
 
             if (pieces[from_y][from_x+1].type == PIECE_EMPTY && pieces[from_y][from_x+2].type == PIECE_EMPTY) {
                 Piece p[BOARD_H][BOARD_W];
@@ -241,7 +251,7 @@ void attempt_castle(int from_x, int from_y, int to_x, int to_y) {
     } else {
         /* Queen's side castle */
         if (from_x == 4 && (white ? from_y == 7 : from_y == 0) && to_x == from_x-2 && to_y == from_y) {
-            if (pieces[to_y][to_x-2].type != PIECE_ROOK) return;
+            if (pieces[to_y][to_x-2].type != PIECE_ROOK || pieces[from_y][to_x+1].is_white != white) return;
 
             if (pieces[from_y][from_x-1].type == PIECE_EMPTY && pieces[from_y][from_x-2].type == PIECE_EMPTY) {
                 Piece p[BOARD_H][BOARD_W];
@@ -256,6 +266,42 @@ void attempt_castle(int from_x, int from_y, int to_x, int to_y) {
                     memcpy(pieces, p, sizeof(Piece) * 8 * 8);
                 }
             }
+        }
+    }
+}
+
+void attempt_en_passant(int from_x, int from_y, int to_x, int to_y) {
+    Piece p = pieces[from_y][to_x];
+    bool white = pieces[from_y][from_x].is_white;
+
+    puts("a"); fflush(stdout);
+    
+    if (white) {
+        if (from_y != 3) return;
+    } else {
+        if (from_y != 4) return;
+    }
+
+    puts("b"); fflush(stdout);
+        
+    if (abs(from_x - to_x) != 1) return;
+    if (abs(from_y - to_y) != 1) return;
+
+    puts("c"); 
+    puts(""); fflush(stdout);
+    
+    if (p.type != PIECE_PAWN || p.is_white == pieces[from_y][from_x].is_white) return;
+
+    {
+        Piece pp[BOARD_H][BOARD_W];
+
+        memcpy(pp, pieces, sizeof(Piece) * 8 * 8);
+
+        move_piece(from_x, from_y, to_x, to_y);
+        pieces[from_y][to_x].type = PIECE_EMPTY;
+
+        if ((white && is_in_check() == 1) || (!white && is_in_check() == 2)) {
+            memcpy(pieces, pp, sizeof(Piece) * 8 * 8);
         }
     }
 }
@@ -355,6 +401,8 @@ int main() {
                     selected_x = px;
                     selected_y = py;
                 } else {
+                    printf("%d, %d\n", pawn_that_moved_two_squares_x, pawn_that_moved_two_squares_y); fflush(stdout);
+                    
                     if (is_move_valid(selected_x, selected_y, px, py)) {
                         Piece tmp[BOARD_W][BOARD_H];
                         memcpy(tmp, pieces, sizeof(Piece) * BOARD_W * BOARD_H);
@@ -383,11 +431,23 @@ int main() {
                                 }
                             }
                         }
+
                         if (can_promote(px, py)) {
                             pieces[py][px].type = PIECE_QUEEN;
                         }
+
+                        if (did_move_pawn) {
+                            pawn_that_moved_two_squares_x = px;
+                            pawn_that_moved_two_squares_y = py;
+                            did_move_pawn = false;
+                        } else {
+                            pawn_that_moved_two_squares_x = -1;
+                            pawn_that_moved_two_squares_y = -1;
+                        }
                     }
 
+
+                    attempt_en_passant(selected_x, selected_y, px, py);
                     attempt_castle(selected_x, selected_y, px, py);
                     
                     selected_x = -1;
