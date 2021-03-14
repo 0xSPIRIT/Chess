@@ -295,7 +295,10 @@ void attempt_en_passant(int from_x, int from_y, int to_x, int to_y) {
 
         if ((white && is_in_check() == 1) || (!white && is_in_check() == 2)) {
             memcpy(pieces, pp, sizeof(Piece) * 8 * 8);
+            return;
         }
+
+        is_white_turn = !is_white_turn;
     }
 }
 
